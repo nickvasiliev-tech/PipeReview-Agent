@@ -1,0 +1,68 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Deals Recorder v1.2.1</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-5xl mx-auto p-6">
+    <h1 class="text-2xl font-bold mb-4">AI Deals Recorder <span class="text-sm text-gray-500">v1.2.1 (web)</span></h1>
+
+    <div class="grid md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="font-semibold mb-2">Recording Mode</h2>
+        <label class="flex items-center gap-2"><input type="radio" name="mode" value="mic" checked> <span>Microphone</span></label>
+        <label class="flex items-center gap-2 mt-1"><input type="radio" name="mode" value="system"> <span>System audio (screen share with audio)</span></label>
+        <div class="text-xs text-gray-500 mt-2">Tip: For system audio, when your browser asks, pick **Entire screen** and tick **Share system audio**.</div>
+
+        <div class="mt-3">
+          <label class="text-sm text-gray-700">Language hint:</label>
+          <select id="language" class="border rounded px-2 py-1 text-sm">
+            <option value="auto" selected>Auto RU/EN</option>
+            <option value="ru">Russian</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="font-semibold mb-2">Controls</h2>
+        <div class="flex items-center gap-3">
+          <button id="startBtn" class="px-4 py-2 rounded-xl bg-green-600 text-white">🎙 Start</button>
+          <button id="stopBtn" class="px-4 py-2 rounded-xl bg-red-600 text-white" disabled>⏹ Stop</button>
+        </div>
+        <div class="mt-3 text-sm"><span class="font-mono">Status:</span> <span id="status">Idle</span></div>
+        <div class="mt-1 text-xs text-gray-500">Length: <span id="timer">00:00</span></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="font-semibold mb-2">Export</h2>
+        <button id="exportCsvBtn" class="px-3 py-2 rounded-xl bg-blue-600 text-white disabled:opacity-50" disabled>⬇ CSV</button>
+        <button id="copyAllBtn" class="px-3 py-2 rounded-xl bg-gray-800 text-white disabled:opacity-50" disabled>📋 Copy Markdown</button>
+        <div class="text-xs text-gray-500 mt-2">CSV: one row per deal. Markdown: blocks per deal.</div>
+      </div>
+    </div>
+
+    <div id="dealsContainer" class="space-y-3"></div>
+
+<div class="bg-white rounded-2xl shadow p-4 mt-6">
+  <h2 class="font-semibold mb-2">Manual fallback</h2>
+  <p class="text-sm text-gray-600 mb-2">If network blocks OpenAI transcription, paste the transcript text here and we will still parse deals locally via your server → OpenAI chat.</p>
+  <textarea id="manualTranscript" class="w-full border rounded p-2 h-32" placeholder="Paste transcript here..."></textarea>
+  <div class="mt-2">
+    <button id="manualParseBtn" class="px-3 py-2 rounded-xl bg-purple-600 text-white">Parse pasted transcript</button>
+  </div>
+</div>
+
+    <footer class="mt-10 text-xs text-gray-400">
+      <p>Local-first. Only transcript text is sent to OpenAI for parsing. Dates normalized to Europe/Madrid.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
