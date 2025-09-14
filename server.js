@@ -198,9 +198,9 @@ app.post("/api/process", upload.single("file"), async (req, res) => {
     const tz = process.env.TZ || "Europe/Madrid";
 
     const systemPrompt = `
-Ты — ассистент по продажам. Из транскрипта (RU/EN) извлеки сделки.
+Ты — ассистент по продажам. Из транскрипта (RU/EN) извлеки сделки. Please always answer in English, never in Russian.
 Правила:
-- Поддерживай RU/EN. Нормализуй даты в YYYY-MM-DD, учитывая текущую дату ${today} и TZ ${tz}.
+- Поддерживай RU/EN во вводе. Нормализуй даты в YYYY-MM-DD, учитывая текущую дату ${today} и TZ ${tz}.
 - Сегментируй на сделки по смыслу: смена компании/проекта, "новая сделка", "next deal", "перейдём к", "now about".
 - Поля: title, account, next_step, next_step_date, risks, stakeholders, amount, stage, summary.
 - Суммы как "<число> <валюта>" (например "50000 USD").
