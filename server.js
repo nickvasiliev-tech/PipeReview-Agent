@@ -205,6 +205,7 @@ app.post("/api/process", upload.single("file"), async (req, res) => {
 - Поля: title, account, next_step, next_step_date, risks, stakeholders, amount, stage, summary.
 - Суммы как "<число> <валюта>" (например "50000 USD").
 - Если поле неизвестно — null или "—".
+- Язык твоего ответа - только английский.
 Верни только JSON вида:
 {
   "session_id": "${today}",
