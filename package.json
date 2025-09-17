@@ -1,22 +1,25 @@
 {
-  "name": "ai-deals-recorder",
-  "version": "1.2.1",
+  "name": "deal-inspection-app",
+  "version": "1.2.0",
   "private": true,
-  "type": "module",
+  "description": "Deal Inspection recorder and analyzer \u2014 Node + vanilla JS (no time limit recording, chunked upload). Ready for Render.",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server/server.js",
+    "dev": "NODE_ENV=development nodemon server/server.js"
+  },
+  "engines": {
+    "node": ">=18 <=22"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "fluent-ffmpeg": "^2.1.2",
     "multer": "^1.4.5-lts.1",
-    "openai": "^4.56.0",
-    "uuid": "^9.0.1",
-    "undici": "^6.19.8"
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.1.4"
   }
 }
