@@ -1,8 +1,8 @@
 {
-  "name": "deal-inspection-app",
-  "version": "1.2.0",
+  "name": "deal-inspection-app-multideal",
+  "version": "2.0.0",
   "private": true,
-  "description": "Deal Inspection recorder and analyzer \u2014 Node + vanilla JS (no time limit recording, chunked upload). Ready for Render.",
+  "description": "Deal Inspection recorder with multi-deal markers (no time limit recording, chunked upload). Ready for Render.",
   "scripts": {
     "start": "node server/server.js",
     "dev": "NODE_ENV=development nodemon server/server.js"
