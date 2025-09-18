@@ -19,18 +19,19 @@
       <label><input type="radio" name="capmode" value="mixed"> Option B — Teams tab + Mic (recommended)</label>
     </div>
     <p class="hint">
-      Option B: In Chrome/Edge on Windows, pick the <b>Teams web tab</b> and enable <b>“Share tab audio.”</b> On macOS, system audio may need extra OS permissions and could be limited. Teams desktop app cannot be tab-captured.
+      Option B: Click <b>Initialize</b> → in the Chrome/Edge dialog choose the <b>Teams web tab</b> and toggle <b>“Also share tab audio.”</b> Then click <b>Start</b>. On macOS, extra OS permissions may be required and system audio can be limited. Teams desktop app cannot be tab-captured.
     </p>
   </section>
 
   <section class="card">
     <h2>Record</h2>
     <div class="controls">
+      <button id="btnInit">Initialize</button>
       <button id="btnStart" disabled>Start</button>
       <button id="btnStop" disabled>Stop</button>
       <span id="timer">00:00</span>
     </div>
-    <p id="micStatus">Initializing…</p>
+    <p id="micStatus">Click Initialize to grant capture permissions</p>
     <audio id="player" controls class="hidden"></audio>
     <div class="row">
       <a id="downloadAudio" class="hidden" download="meeting.webm">Download recording</a>

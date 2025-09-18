@@ -39,7 +39,7 @@ npm run start
 6. Open the URL Render provides.
 
 ## Option B Notes
-- When starting a recording, choose **Teams web tab** and enable **“Share tab audio.”**
+- Click **Initialize** in the app, then in the browser dialog choose the **Teams web tab** and toggle **“Also share tab audio.”**
 - **Windows + Chrome/Edge**: best results.
 - **macOS**: system audio capture may need extra OS permissions or be limited.
 - **Teams desktop app**: tab capture doesn’t work; on Windows, share **entire screen with system audio** or use a virtual audio device.

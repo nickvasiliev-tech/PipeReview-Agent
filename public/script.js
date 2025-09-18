@@ -1,9 +1,14 @@
 let mediaRecorder;
 let chunks = [];
 let recordedBlob = null;
+let initialized = false;
+let captureStream = null;
+
 let timerInterval = null;
 let startTime = null;
 
+const btnInit = document.getElementById('btnInit');
+const btnInit = document.getElementById('btnInit');
 const btnStart = document.getElementById('btnStart');
 const btnStop = document.getElementById('btnStop');
 const btnTranscribe = document.getElementById('btnTranscribe');
@@ -29,16 +34,16 @@ async function initCapture() {
       const dest = ctx.createMediaStreamDestination();
       sysSrc.connect(dest);
       micSrc.connect(dest);
-      stream = dest.stream;
+      stream = dest.stream; captureStream = stream;
       micStatus.textContent = 'Ready (system audio + mic)';
     } else {
       // Option A — mic only
       const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream = mic;
+      stream = mic; captureStream = stream;
       micStatus.textContent = 'Ready (mic only)';
     }
 
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); initialized = true;
     mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
     mediaRecorder.onstop = () => {
       recordedBlob = new Blob(chunks, { type: 'audio/webm' });
@@ -133,5 +138,9 @@ fileInput.addEventListener('change', async (e) => {
 
 // Initialize after DOM load
 window.addEventListener('load', () => {
-  initCapture();
+  micStatus.textContent = 'Click Initialize to grant capture permissions';
+});
+
+btnInit.addEventListener('click', async () => {
+  await initCapture();
 });
