@@ -1,25 +1,22 @@
 {
-  "name": "deal-inspection-app-multideal",
-  "version": "2.0.0",
+  "name": "deal-inspection-app",
+  "version": "1.0.0",
   "private": true,
-  "description": "Deal Inspection recorder with multi-deal markers (no time limit recording, chunked upload). Ready for Render.",
+  "type": "module",
   "scripts": {
-    "start": "node server/server.js",
-    "dev": "NODE_ENV=development nodemon server/server.js"
-  },
-  "engines": {
-    "node": ">=18 <=22"
+    "start": "NODE_ENV=production node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo \"Nothing to build for static public/\""
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "fluent-ffmpeg": "^2.1.2",
     "multer": "^1.4.5-lts.1",
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "uuid": "^9.0.1"
+    "node-fetch": "^3.3.2",
+    "openai": "^4.62.0",
+    "cors": "^2.8.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.0"
   }
 }
