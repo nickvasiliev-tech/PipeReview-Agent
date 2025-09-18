@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: deal-inspection-app
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true

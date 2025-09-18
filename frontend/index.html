@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deal Inspection App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div class="max-w-6xl mx-auto p-6 space-y-6">
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Deal Inspection App</h1>
+      <span id="status" class="px-3 py-1 rounded-full text-sm bg-gray-200">Ready</span>
+    </header>
+
+    <section class="grid md:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl shadow p-4 space-y-3">
+          <h2 class="font-semibold">Capture Mode</h2>
+          <div class="flex gap-4 items-center">
+            <label class="flex items-center gap-2">
+              <input type="radio" name="mode" value="mic" checked class="accent-blue-600" />
+              <span>Option A — Mic only</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="mode" value="tab" class="accent-blue-600" />
+              <span>Option B — Teams web tab + mic (Chrome/Edge)</span>
+            </label>
+          </div>
+          <p class="text-sm text-gray-600">Tip: For Option B click <strong>Initialize</strong>, pick the Teams browser tab, and enable <em>Also share tab audio</em> in Chrome/Edge.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow p-4 space-y-3">
+          <h2 class="font-semibold">Controls</h2>
+          <div class="flex flex-wrap gap-2">
+            <button id="btnInit" class="px-4 py-2 rounded-2xl shadow bg-blue-600 text-white">Initialize</button>
+            <button id="btnStart" class="px-4 py-2 rounded-2xl shadow bg-green-600 text-white" disabled>Start</button>
+            <button id="btnStop" class="px-4 py-2 rounded-2xl shadow bg-red-600 text-white" disabled>Stop</button>
+            <button id="btnTranscribe" class="px-4 py-2 rounded-2xl shadow bg-indigo-600 text-white" disabled>Transcribe & Extract</button>
+          </div>
+          <div class="text-sm text-gray-700">
+            <span>Timer: <span id="timer">00:00:00</span></span>
+          </div>
+          <div class="pt-2">
+            <label class="block text-sm font-medium text-gray-700">Or upload a pre-recorded audio (webm/wav/mp3)</label>
+            <input id="fileInput" type="file" accept="audio/*" class="mt-1" />
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow p-4 space-y-3">
+          <h2 class="font-semibold">Playback</h2>
+          <audio id="player" controls class="w-full"></audio>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl shadow p-4 space-y-3">
+          <h2 class="font-semibold">Results</h2>
+          <div id="results" class="space-y-3">
+            <p class="text-sm text-gray-600">Run <em>Transcribe & Extract</em> to see transcript, per-deal cards, and exports.</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow p-4 space-y-3">
+          <h2 class="font-semibold">Exports</h2>
+          <div class="flex gap-2">
+            <button id="btnExportJson" class="px-3 py-2 rounded-xl bg-gray-800 text-white disabled:opacity-50" disabled>JSON</button>
+            <button id="btnExportCsv" class="px-3 py-2 rounded-xl bg-gray-800 text-white disabled:opacity-50" disabled>CSV</button>
+            <button id="btnExportMd" class="px-3 py-2 rounded-xl bg-gray-800 text-white disabled:opacity-50" disabled>Markdown</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="text-xs text-gray-500">
+      <p>Chrome/Edge recommended for Option B. On macOS, additional permissions may be required. Teams desktop cannot be tab-captured — use full-screen share with system audio or a virtual device.</p>
+    </footer>
+  </div>
+
+  <script>
+  const statusEl = document.getElementById('status');
+  const btnInit = document.getElementById('btnInit');
+  const btnStart = document.getElementById('btnStart');
+  const btnStop = document.getElementById('btnStop');
+  const btnTranscribe = document.getElementById('btnTranscribe');
+  const timerEl = document.getElementById('timer');
+  const player = document.getElementById('player');
+  const fileInput = document.getElementById('fileInput');
+  const results = document.getElementById('results');
+  const btnExportJson = document.getElementById('btnExportJson');
+  const btnExportCsv = document.getElementById('btnExportCsv');
+  const btnExportMd = document.getElementById('btnExportMd');
+
+  let selectedMode = 'mic';
+  let ctx, sysStream, micStream, mixedStream, mediaRecorder;
+  let chunks = [];
+  let timerInterval, startTime;
+  let lastResult = null;
+
+  document.querySelectorAll('input[name="mode"]').forEach(r => {
+    r.addEventListener('change', e => {
+      selectedMode = e.target.value;
+    });
+  });
+
+  function setStatus(s) {
+    statusEl.textContent = s;
+    statusEl.className = 'px-3 py-1 rounded-full text-sm ' + (s === 'Recording' ? 'bg-red-100 text-red-700' :
+      s === 'Ready' ? 'bg-gray-200' :
+      s === 'Stopped' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200');
+  }
+
+  function formatTime(ms) {
+    const t = Math.floor(ms / 1000);
+    const h = String(Math.floor(t / 3600)).padStart(2,'0');
+    const m = String(Math.floor((t % 3600)/60)).padStart(2,'0');
+    const s = String(t % 60).padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  }
+
+  function startTimer() {
+    startTime = Date.now();
+    timerInterval = setInterval(() => {
+      timerEl.textContent = formatTime(Date.now() - startTime);
+    }, 250);
+  }
+  function stopTimer() {
+    clearInterval(timerInterval);
+  }
+
+  async function initCapture() {
+    setStatus('Initializing…');
+    btnInit.disabled = true;
+    try {
+      if (selectedMode === 'tab') {
+        // Ask user to pick the Teams tab with "Also share tab audio"
+        sysStream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: false });
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        ctx = new AudioContext();
+        const sysSrc = ctx.createMediaStreamSource(sysStream);
+        const micSrc = ctx.createMediaStreamSource(micStream);
+        const dest = ctx.createMediaStreamDestination();
+        sysSrc.connect(dest);
+        micSrc.connect(dest);
+        mixedStream = dest.stream;
+      } else {
+        mixedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      btnStart.disabled = false;
+      setStatus('Ready');
+    } catch (err) {
+      console.error(err);
+      alert('Initialization failed. Falling back to Mic-only.');
+      try {
+        mixedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        btnStart.disabled = false;
+        setStatus('Ready');
+      } catch (e) {
+        console.error(e);
+        setStatus('Ready');
+        btnInit.disabled = false;
+        alert('Mic access failed. Check permissions.');
+      }
+    }
+  }
+
+  function startRecording() {
+    chunks = [];
+    const opts = { mimeType: 'audio/webm' };
+    try {
+      mediaRecorder = new MediaRecorder(mixedStream, opts);
+    } catch (e) {
+      mediaRecorder = new MediaRecorder(mixedStream);
+    }
+    mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      player.src = URL.createObjectURL(blob);
+      player.load();
+      btnTranscribe.disabled = false;
+    };
+    mediaRecorder.start(1000); // collect in 1s chunks; stable for long recordings
+    btnStart.disabled = true;
+    btnStop.disabled = false;
+    setStatus('Recording');
+    startTimer();
+  }
+
+  function stopRecording() {
+    stopTimer();
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    btnStop.disabled = true;
+    btnStart.disabled = false;
+    setStatus('Stopped');
+  }
+
+  async function transcribeAndExtract() {
+    let blob;
+    if (fileInput.files && fileInput.files[0]) {
+      blob = fileInput.files[0];
+    } else if (chunks.length) {
+      blob = new Blob(chunks, { type: 'audio/webm' });
+    } else {
+      alert('No audio available. Record or upload a file first.');
+      return;
+    }
+
+    setStatus('Uploading…');
+    const form = new FormData();
+    form.append('audio', blob, 'recording.webm');
+
+    try {
+      const tr = await fetch('/api/transcribe', { method: 'POST', body: form });
+      if (!tr.ok) throw new Error('Transcription failed');
+      const trJson = await tr.json();
+
+      const ex = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript_en: trJson.transcript_en, meta: trJson.meta || {} })
+      });
+      if (!ex.ok) throw new Error('Extraction failed');
+      const exJson = await ex.json();
+      lastResult = { transcript_en: trJson.transcript_en, deals: exJson.deals || [], session_summary: exJson.session_summary || {} };
+      renderResults(lastResult);
+      enableExports(true);
+      setStatus('Ready');
+    } catch (e) {
+      console.error(e);
+      alert(e.message);
+      setStatus('Ready');
+    }
+  }
+
+  function renderResults(data) {
+    results.innerHTML = '';
+    const t = document.createElement('div');
+    t.className = 'p-3 border rounded-xl bg-gray-50 text-sm';
+    t.innerHTML = '<strong>Transcript (EN):</strong><br>' + (data.transcript_en ? data.transcript_en.replace(/\n/g,'<br>') : '—');
+    results.appendChild(t);
+
+    if (data.deals && data.deals.length) {
+      data.deals.forEach((d, i) => {
+        const card = document.createElement('div');
+        card.className = 'p-4 border rounded-2xl shadow bg-white';
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <h3 class="font-semibold">Deal ${i+1}: ${escapeHtml(d.name || 'Unnamed')}</h3>
+            <span class="text-xs px-2 py-1 rounded bg-gray-100">${escapeHtml(d.stage || 'Stage?')} · ${escapeHtml(d.forecast_category || 'FC?')} · ${d.probability ?? '?'}%</span>
+          </div>
+          <div class="grid md:grid-cols-2 gap-2 mt-2 text-sm">
+            <div><strong>Close Date:</strong> ${escapeHtml(d.close_date || '—')} ${d.close_date_realism || ''}</div>
+            <div><strong>Next Step:</strong> ${escapeHtml(d.next_step?.text || '—')} ${d.next_step?.owner ? '('+escapeHtml(d.next_step.owner)+')' : ''} ${d.next_step?.date ? 'by '+escapeHtml(d.next_step.date) : ''}</div>
+            <div><strong>Decision Process:</strong> ${escapeHtml(d.decision_process || '—')}</div>
+            <div><strong>Competitors:</strong> ${escapeHtml((d.competitors||[]).join(', ') || '—')}</div>
+            <div><strong>Budget:</strong> ${escapeHtml(d.budget || '—')}</div>
+            <div><strong>Timeline:</strong> ${escapeHtml(d.timeline || '—')}</div>
+            <div><strong>POC/SE involvement:</strong> ${escapeHtml(d.poc_se || '—')}</div>
+            <div><strong>Customer Type:</strong> ${escapeHtml(d.customer_type || '—')}</div>
+            <div><strong>Repository:</strong> ${escapeHtml(d.repository || '—')}</div>
+            <div><strong>Retention:</strong> ${escapeHtml(d.retention || '—')}</div>
+            <div><strong>Data Amount:</strong> ${escapeHtml(d.data_amount || '—')}</div>
+            <div><strong>VUL Estimate:</strong> ${escapeHtml(d.vul_estimate || '—')}</div>
+          </div>
+          <div class="mt-2">
+            <strong>Strengths:</strong> ${escapeHtml((d.strengths||[]).join('; ') || '—')}<br>
+            <strong>Risks/Blockers:</strong> ${escapeHtml((d.risks||[]).join('; ') || '—')}<br>
+            <strong>Stage Alignment:</strong> ${escapeHtml(d.stage_alignment || '—')}
+          </div>
+          ${d.flags && d.flags.length ? `<div class="mt-2 text-amber-700"><strong>Flags:</strong> ${escapeHtml(d.flags.join('; '))}</div>` : ''}
+        `;
+        results.appendChild(card);
+      });
+    }
+
+    if (data.session_summary) {
+      const s = data.session_summary;
+      const box = document.createElement('div');
+      box.className = 'p-4 border rounded-2xl shadow bg-white';
+      box.innerHTML = `
+        <h3 class="font-semibold">Session Summary</h3>
+        <div class="text-sm">
+          <strong>Deals:</strong> ${(s.deals||[]).map(n=>escapeHtml(n)).join(', ') || '—'}<br>
+          <strong>Global Action Items:</strong> ${escapeHtml((s.actions||[]).join('; ') || '—')}<br>
+          <strong>Cross-Pipeline Risks:</strong> ${escapeHtml((s.risks||[]).join('; ') || '—')}
+        </div>
+      `;
+      results.appendChild(box);
+    }
+  }
+
+  function enableExports(on) {
+    btnExportJson.disabled = !on;
+    btnExportCsv.disabled = !on;
+    btnExportMd.disabled = !on;
+  }
+
+  function download(name, text, type='text/plain') {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type}));
+    a.download = name;
+    a.click();
+  }
+
+  function toCsv(arr) {
+    const esc = v => {
+      if (v === null || v === undefined) return '';
+      v = String(v);
+      if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+        return '"' + v.replace(/"/g,'""') + '"';
+      }
+      return v;
+    };
+    const header = [
+      'name','stage','probability','forecast_category','close_date','close_date_realism',
+      'next_step_text','next_step_owner','next_step_date','decision_process','competitors',
+      'budget','timeline','poc_se','customer_type','repository','retention','data_amount','vul_estimate',
+      'strengths','risks','stage_alignment','flags'
+    ];
+    const rows = [header.join(',')];
+    (lastResult.deals || []).forEach(d => {
+      const row = [
+        d.name, d.stage, d.probability, d.forecast_category, d.close_date, d.close_date_realism,
+        d.next_step?.text, d.next_step?.owner, d.next_step?.date, d.decision_process, (d.competitors||[]).join('; '),
+        d.budget, d.timeline, d.poc_se, d.customer_type, d.repository, d.retention, d.data_amount, d.vul_estimate,
+        (d.strengths||[]).join('; '), (d.risks||[]).join('; '), d.stage_alignment, (d.flags||[]).join('; ')
+      ].map(esc).join(',');
+      rows.push(row);
+    });
+    return rows.join('\n');
+  }
+
+  function toMd(data) {
+    const lines = [];
+    lines.push('# Deal Inspection Report');
+    lines.push('');
+    lines.push('## Transcript (EN)');
+    lines.push('');
+    lines.push(data.transcript_en || '—');
+    lines.push('');
+    (data.deals || []).forEach((d,i)=>{
+      lines.push(`## Deal ${i+1}: ${d.name || 'Unnamed'}`);
+      lines.push('');
+      lines.push(`- Stage: ${d.stage || '—'} | FC: ${d.forecast_category || '—'} | Prob: ${d.probability ?? '—'}%`);
+      lines.push(`- Close Date: ${d.close_date || '—'} ${d.close_date_realism || ''}`);
+      lines.push(`- Next Step: ${d.next_step?.text || '—'} (${d.next_step?.owner || '—'}) by ${d.next_step?.date || '—'}`);
+      lines.push(`- Decision Process: ${d.decision_process || '—'}`);
+      lines.push(`- Competitors: ${(d.competitors||[]).join(', ') || '—'}`);
+      lines.push(`- Budget: ${d.budget || '—'} | Timeline: ${d.timeline || '—'}`);
+      lines.push(`- POC/SE: ${d.poc_se || '—'}`);
+      lines.push(`- Customer Type: ${d.customer_type || '—'}`);
+      lines.push(`- Repository: ${d.repository || '—'} | Retention: ${d.retention || '—'} | Data: ${d.data_amount || '—'} | VUL: ${d.vul_estimate || '—'}`);
+      lines.push(`- Strengths: ${(d.strengths||[]).join('; ') || '—'}`);
+      lines.push(`- Risks: ${(d.risks||[]).join('; ') || '—'}`);
+      lines.push(`- Stage Alignment: ${d.stage_alignment || '—'}`);
+      if (d.flags && d.flags.length) lines.push(`- Flags: ${d.flags.join('; ')}`);
+      lines.push('');
+    });
+    if (data.session_summary) {
+      lines.push('## Session Summary');
+      lines.push('');
+      lines.push(`- Deals: ${(data.session_summary.deals||[]).join(', ') || '—'}`);
+      lines.push(`- Global Action Items: ${(data.session_summary.actions||[]).join('; ') || '—'}`);
+      lines.push(`- Cross-Pipeline Risks: ${(data.session_summary.risks||[]).join('; ') || '—'}`);
+    }
+    return lines.join('\n');
+  }
+
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  }
+
+  btnInit.addEventListener('click', initCapture);
+  btnStart.addEventListener('click', startRecording);
+  btnStop.addEventListener('click', stopRecording);
+  btnTranscribe.addEventListener('click', transcribeAndExtract);
+
+  btnExportJson.addEventListener('click', () => {
+    if (!lastResult) return;
+    download('deal-inspection.json', JSON.stringify(lastResult, null, 2), 'application/json');
+  });
+  btnExportCsv.addEventListener('click', () => {
+    if (!lastResult) return;
+    download('deal-inspection.csv', toCsv(lastResult), 'text/csv');
+  });
+  btnExportMd.addEventListener('click', () => {
+    if (!lastResult) return;
+    download('deal-inspection.md', toMd(lastResult), 'text/markdown');
+  });
+  </script>
+</body>
+</html>
